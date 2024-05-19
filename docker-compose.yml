@@ -1,0 +1,17 @@
+version: '3'
+services:
+  db:
+    image: postgres
+    container_name: ku_bazar_chat
+    restart: always
+    environment:
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=kubazar
+    ports:
+      - '5432:5432'
+    volumes: 
+      - db:/var/lib/postgresql/data
+volumes:
+  db:
+    driver: local
