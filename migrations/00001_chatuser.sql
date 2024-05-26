@@ -1,7 +1,6 @@
 CREATE TABLE chat_user (
-    username varchar(50),
-    fullname varchar(50)
+id uuid primary key,
+username varchar(50) not null unique,
+fullname varchar(50) not null
 );
-
-CREATE UNIQUE INDEX chatuser_idx ON chat_user (username);
 

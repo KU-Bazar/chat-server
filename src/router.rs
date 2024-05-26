@@ -1,19 +1,18 @@
+use crate::{
+    database::user::{check_user_exist, create_user},
+    models::users::User,
+    utility::response::{failure_response, internal_error, success_response, ResponseMessage},
+};
+use axum::Json;
 use axum::{
     extract::{
         ws::{WebSocket, WebSocketUpgrade},
         State,
     },
     http::StatusCode,
-    response::Response,
-    Json,
+    response::{IntoResponse, Response},
 };
 use sqlx::PgPool;
-
-use crate::{
-    database::user::create_user,
-    models::{self, users::User},
-    utility::response::internal_error,
-};
 pub async fn say_hello_world() -> String {
     String::from("Hello world")
 }
@@ -38,20 +37,57 @@ async fn handle_socket(mut socket: WebSocket) {
         }
     }
 }
+// pub async fn create_user_request(
+//     State(pool): State<PgPool>,
+//     Json(user): Json<User>,
+// ) -> Result<Json<User>, (StatusCode, String)> {
+//     // let res = create_user(user.clone(), &pool)
+//     //     .await
+//     //     .map_err(internal_error);
+//     let query = "insert into chat_user (username, fullname) values ($1,$2)";
+//     let _response = sqlx::query(query)
+//         .bind(&user.username)
+//         .bind(&user.fullname)
+//         .execute(&pool)
+//         .await
+//         .map_err(internal_error);
+//     Ok(Json(user))
+// }
+//
+
+pub async fn returns_json() -> Json<ResponseMessage> {
+    return success_response("I am a bully");
+}
+
 pub async fn create_user_request(
     State(pool): State<PgPool>,
-    Json(user): Json<models::users::User>,
-) -> Result<Json<User>, (StatusCode, String)> {
-    // let res = create_user(user.clone(), &pool)
-    //     .await
-    //     .map_err(internal_error);
-    let query = "insert into chat_user (username, fullname) values ($1,$2)";
-    let _response = sqlx::query(query)
-        .bind(&user.username)
-        .bind(&user.fullname)
-        .execute(&pool)
-        .await
-        .map_err(internal_error);
-    let query = "select * from chat_user";
-    Ok(Json(user))
+    Json(user): Json<User>,
+) -> Result<Json<ResponseMessage>, (StatusCode, Json<ResponseMessage>)> {
+    let user_id = user.id.clone();
+
+    match check_user_exist(user_id, &pool).await {
+        Ok(true) => {
+            return Err((
+                StatusCode::CONFLICT,
+                failure_response("User already exists"),
+            ));
+        }
+        Ok(false) => match create_user(user, &pool).await {
+            Ok(_created_user) => {
+                return Ok(success_response("Successfully created user"));
+            }
+            Err(_) => {
+                return Err((
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    failure_response("Something went wrong while searching user"),
+                ));
+            }
+        },
+        Err(_) => {
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                failure_response("Something went wrong while creating user"),
+            ));
+        }
+    }
 }

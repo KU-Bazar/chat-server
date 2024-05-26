@@ -1,9 +1,7 @@
-use sqlx::postgres::PgPoolOptions;
 use sqlx::PgPool;
 
-pub async fn db_init() -> Result<PgPool, Box<dyn std::error::Error>> {
-    let url = "postgres://admin:password@localhost:5432/postgres";
-    let connection_pool = PgPoolOptions::new().max_connections(5).connect(url).await?;
+pub async fn db_init(url: &str) -> Result<PgPool, Box<dyn std::error::Error>> {
+    let connection_pool = sqlx::PgPool::connect(url).await?;
     Ok(connection_pool)
 }
 
