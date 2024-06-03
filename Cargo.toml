@@ -10,10 +10,11 @@ client = "examples/client.rs"
 [dependencies]
 axum = {version = "0.7.5", features=["ws"]}
 tokio = {version= "1.37.0", features = ["full"]}
-sqlx = {version="0.6", features=["postgres","runtime-tokio-rustls","macros","uuid"]}
+sqlx = {version="0.6", features=["postgres","runtime-tokio-rustls","macros","uuid","chrono"]}
 serde = "1.0.202"
 dotenv = "0.15.0"
 uuid = {version="1.8.0", features=["serde"]}
 tower-http = { version = "0.5.2", features = ["cors"] }
 http = "1.0"
 socketioxide="0.13.1"
+chrono={version="0.4.38", features = ["serde"]}
