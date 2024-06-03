@@ -4,7 +4,9 @@ use axum::{
 };
 use chat::{
     database,
-    router::{create_user_request, returns_json, say_hello_world, socket_hanlder},
+    router::{
+        create_user_request, get_all_user_request, returns_json, say_hello_world, socket_hanlder,
+    },
 };
 use std::error;
 
@@ -17,6 +19,7 @@ async fn main() -> Result<(), Box<dyn error::Error>> {
         .route("/", get(|| say_hello_world()))
         .route("/ws", get(socket_hanlder))
         .route("/user/add", post(create_user_request))
+        .route("/user/getall", get(get_all_user_request))
         .route("/wtf", get(returns_json))
         .with_state(connection);
     let listener = tokio::net::TcpListener::bind("0.0.0.0:1984").await?;

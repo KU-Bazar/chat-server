@@ -1,7 +1,7 @@
 use crate::{
-    database::user::{check_user_exist, create_user},
+    database::user::{check_user_exist, create_user, get_all_users},
     models::users::User,
-    utility::response::{failure_response, internal_error, success_response, ResponseMessage},
+    utility::response::{failure_response, success_response, ResponseMessage},
 };
 use axum::Json;
 use axum::{
@@ -10,7 +10,7 @@ use axum::{
         State,
     },
     http::StatusCode,
-    response::{IntoResponse, Response},
+    response::Response,
 };
 use sqlx::PgPool;
 pub async fn say_hello_world() -> String {
@@ -57,6 +57,21 @@ async fn handle_socket(mut socket: WebSocket) {
 
 pub async fn returns_json() -> Json<ResponseMessage> {
     return success_response("I am a bully");
+}
+
+pub async fn get_all_user_request(
+    State(pool): State<PgPool>,
+) -> Result<Json<Vec<User>>, (StatusCode, Json<ResponseMessage>)> {
+    match get_all_users(&pool).await {
+        Ok(response) => return Ok(Json(response)),
+
+        Err(_) => {
+            return Err((
+                StatusCode::CONFLICT,
+                failure_response("User already exists"),
+            ))
+        }
+    }
 }
 
 pub async fn create_user_request(

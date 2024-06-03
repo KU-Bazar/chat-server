@@ -4,10 +4,8 @@ use sqlx::types::Uuid;
 use sqlx::PgPool;
 use sqlx::{query, query_as};
 pub async fn create_user(user: User, pool: &PgPool) -> Result<User, Error> {
-    let created_user = query_as!(
-        User,
-        "INSERT INTO chat_user (id, username, fullname) VALUES ($1, $2, $3) RETURNING id, username, fullname",
-        user.id, user.username, user.fullname
+    let created_user = query_as!(User,"INSERT INTO chat_user (id, username, fullname, avatar_url) VALUES ($1, $2, $3, $4) RETURNING id, username, fullname, avatar_url",
+        user.id, user.username, user.fullname, user.avatar_url
     )
     .fetch_one(pool)
     .await?;
@@ -22,4 +20,14 @@ pub async fn check_user_exist(user_id: Uuid, pool: &PgPool) -> Result<bool, Erro
     .await?;
     //true for error propagation
     Ok(is_there_fucking_user.exists.unwrap_or(true))
+}
+
+pub async fn get_all_users(pool: &PgPool) -> Result<Vec<User>, Error> {
+    let all_users = query_as!(
+        User,
+        "SELECT id, username, fullname, avatar_url FROM chat_user"
+    )
+    .fetch_all(pool)
+    .await?;
+    Ok(all_users)
 }
