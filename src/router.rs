@@ -12,19 +12,32 @@ use axum::{
     http::StatusCode,
     response::Response,
 };
+use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
+use uuid::Uuid;
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Message {
+    pub userId: Uuid,
+    pub text: String,
+    pub time: String,
+}
+
 pub async fn say_hello_world() -> String {
     String::from("Hello world")
 }
 
-pub async fn socket_hanlder(ws: WebSocketUpgrade) -> Response {
-    println!("hi i am connected!");
-    ws.on_upgrade(handle_socket)
+pub async fn socket_handler(ws: WebSocketUpgrade, Json(message): Json<Message>) -> Response {
+    ws.on_upgrade(move |socket| handle_socket(socket, message))
 }
 
-async fn handle_socket(mut socket: WebSocket) {
+async fn handle_socket(mut socket: WebSocket, message: Message) {
+    println!("Hello brother");
+    println!("Received message from client: {:?}", message);
+    // Loop to continue receiving messages from the WebSocket
     while let Some(msg) = socket.recv().await {
         let msg = if let Ok(msg) = msg {
+            println!("{:?}", msg);
             msg
         } else {
             // client disconnected

@@ -8,4 +8,7 @@ pub mod models {
 pub mod utility {
     pub mod response;
 }
+pub mod socketcontroller {
+    pub mod controller;
+}
 pub mod router;
