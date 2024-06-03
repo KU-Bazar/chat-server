@@ -25,7 +25,9 @@ async fn main() -> Result<(), Box<dyn error::Error>> {
         .allow_origin(Any);
 
     //socket
-    let (socker_layer, io) = SocketIo::new_layer();
+    let (socker_layer, io) = SocketIo::builder()
+        .with_state(connection.clone())
+        .build_layer();
     io.ns("/connect", on_connect_handler);
 
     //other routes
