@@ -15,3 +15,8 @@ pub struct SocketMessage {
     pub receiver_id: Uuid,
     pub content: String,
 }
+#[derive(Debug, FromRow, Serialize, Deserialize)]
+pub struct SocketOnChatConnection {
+    pub sender_id: Uuid,
+    pub receiver_id: Uuid,
+}

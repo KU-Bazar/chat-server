@@ -107,7 +107,7 @@ pub async fn private_chat(
     user2_id: Uuid,
     message_content: String,
     pool: &PgPool,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), Error> {
     let chat_exists = check_chat_exists(user1_id, user2_id, &pool).await?;
     if !chat_exists {
         insert_chat(user1_id, user2_id, &pool).await?;
@@ -116,4 +116,13 @@ pub async fn private_chat(
     insert_message(chat_id, user1_id, message_content.clone(), &pool).await?;
     update_chat_last_message(chat_id, message_content, user1_id, &pool).await?;
     Ok(())
+}
+
+pub async fn connect_chat_id(user1_id: Uuid, user2_id: Uuid, pool: &PgPool) -> Result<i32, Error> {
+    let chat_exists = check_chat_exists(user1_id, user2_id, &pool).await?;
+    if !chat_exists {
+        insert_chat(user1_id, user2_id, &pool).await?;
+    }
+    let chat_id = get_chat_id(user1_id, user2_id, &pool).await?;
+    Ok(chat_id)
 }
