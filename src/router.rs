@@ -1,13 +1,16 @@
 use crate::{
-    database::user::{check_user_exist, create_user, get_all_users},
-    models::users::User,
+    database::{
+        chat::get_all_conversations,
+        user::{check_user_exist, create_user, get_all_users},
+    },
+    models::{chat::ConnectedChatUser, users::User},
     utility::response::{failure_response, success_response, ResponseMessage},
 };
 use axum::Json;
 use axum::{
     extract::{
         ws::{WebSocket, WebSocketUpgrade},
-        State,
+        Path, State,
     },
     http::StatusCode,
     response::Response,
@@ -18,7 +21,8 @@ use uuid::Uuid;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Message {
-    pub userId: Uuid,
+    #[serde(rename = "userId")]
+    pub user_id: Uuid,
     pub text: String,
     pub time: String,
 }
@@ -116,6 +120,21 @@ pub async fn create_user_request(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 failure_response("Something went wrong while creating user"),
             ));
+        }
+    }
+}
+
+pub async fn get_conversations_request(
+    Path(user_id): Path<Uuid>, // Extracts the UUID from the request path
+    pool: State<PgPool>,
+) -> Result<Json<Vec<ConnectedChatUser>>, (StatusCode, Json<ResponseMessage>)> {
+    match get_all_conversations(user_id, &pool).await {
+        Ok(conversations) => return Ok(Json(conversations)),
+        Err(_) => {
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                failure_response("Something went wrong while getting conversation"),
+            ))
         }
     }
 }

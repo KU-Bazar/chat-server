@@ -2,7 +2,7 @@ use chrono::Utc;
 use sqlx::{query, Error, PgPool};
 use uuid::Uuid;
 
-use crate::models::message::Message;
+use crate::models::{chat::ConnectedChatUser, message::Message};
 
 pub async fn check_chat_exists(
     user1_id: Uuid,
@@ -172,4 +172,36 @@ pub async fn mark_messages_as_seen_for_users(
     .execute(pool)
     .await?;
     Ok(())
+}
+
+pub async fn get_all_conversations(
+    user: Uuid,
+    pool: &PgPool,
+) -> Result<Vec<ConnectedChatUser>, Error> {
+    let conversations = sqlx::query_as!(
+        ConnectedChatUser,
+        r#"
+        SELECT
+            u.id,
+            u.fullname,
+            u.avatar_url,
+            c.last_message,
+            c.last_message_sent_at,
+            c.last_message_sender_id,
+            c.unseen_messages_count
+        FROM
+            Chats c
+        JOIN
+            chat_user u ON (u.id = c.user1_id OR u.id = c.user2_id)
+        WHERE
+            (c.user1_id = $1 OR c.user2_id = $1)
+            AND u.id != $1
+        ORDER BY
+            c.last_message_sent_at ASC
+    "#,
+        user
+    )
+    .fetch_all(pool)
+    .await?;
+    Ok(conversations)
 }

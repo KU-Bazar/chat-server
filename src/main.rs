@@ -5,19 +5,20 @@ use axum::{
 use chat::{
     database,
     router::{
-        create_user_request, get_all_user_request, returns_json, say_hello_world, socket_handler,
+        create_user_request, get_all_user_request, get_conversations_request, returns_json,
+        say_hello_world, socket_handler,
     },
     socketcontroller::controller::on_connect_handler,
 };
 use http::Method;
-use socketioxide::{extract::SocketRef, SocketIo};
+use socketioxide::SocketIo;
 use std::error;
 use tower_http::cors::{Any, CorsLayer};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn error::Error>> {
-    let DATABASE_URL = dotenv::var("DATABASE_URL")?;
-    let connection = database::db::db_init(DATABASE_URL.as_str()).await?;
+    let database_url = dotenv::var("DATABASE_URL")?;
+    let connection = database::db::db_init(database_url.as_str()).await?;
     database::db::db_migration(&connection).await?;
 
     let cors = CorsLayer::new()
@@ -36,6 +37,7 @@ async fn main() -> Result<(), Box<dyn error::Error>> {
         .route("/ws", get(socket_handler))
         .route("/user/add", post(create_user_request))
         .route("/user/getall", get(get_all_user_request))
+        .route("/conversations/:id", get(get_conversations_request))
         .route("/wtf", get(returns_json))
         .with_state(connection)
         .layer(socker_layer)
