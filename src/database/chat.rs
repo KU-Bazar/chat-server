@@ -2,6 +2,8 @@ use chrono::Utc;
 use sqlx::{query, Error, PgPool};
 use uuid::Uuid;
 
+use crate::models::message::Message;
+
 pub async fn check_chat_exists(
     user1_id: Uuid,
     user2_id: Uuid,
@@ -78,44 +80,49 @@ pub async fn get_chat_id(user1_id: Uuid, user2_id: Uuid, pool: &PgPool) -> Resul
     .chat_id;
     Ok(chat_id)
 }
-
 pub async fn insert_message(
     chat_id: i32,
     sender_id: Uuid,
+    receiver_id: Uuid,
     content: String,
     pool: &PgPool,
-) -> Result<(), Error> {
-    sqlx::query!(
+) -> Result<Message, Error> {
+    let inserted_message = sqlx::query_as!(
+        Message,
         r#"
-        INSERT INTO Messages (chat_id, sender_id, content, sent_at)
-        VALUES ($1, $2, $3, $4)
+        INSERT INTO Messages (chat_id, sender_id, receiver_id,content, sent_at, seen)
+        VALUES ($1, $2, $3, $4, $5,$6)
+        RETURNING message_id, chat_id, sender_id, receiver_id,content, sent_at, seen
         "#,
         chat_id,
         sender_id,
+        receiver_id,
         content,
-        Utc::now().naive_utc()
+        Utc::now().naive_utc(),
+        false
     )
-    .execute(pool)
+    .fetch_one(pool)
     .await?;
-    Ok(())
+    Ok(inserted_message)
 }
 
-//assuming user1 as sender_id
-//assuming user2 as receiver_id
 pub async fn private_chat(
-    user1_id: Uuid,
-    user2_id: Uuid,
+    sender_id: Uuid,
+    receiver_id: Uuid,
     message_content: String,
     pool: &PgPool,
-) -> Result<(), Error> {
-    let chat_exists = check_chat_exists(user1_id, user2_id, &pool).await?;
-    if !chat_exists {
-        insert_chat(user1_id, user2_id, &pool).await?;
-    }
-    let chat_id = get_chat_id(user1_id, user2_id, &pool).await?;
-    insert_message(chat_id, user1_id, message_content.clone(), &pool).await?;
-    update_chat_last_message(chat_id, message_content, user1_id, &pool).await?;
-    Ok(())
+) -> Result<Message, Error> {
+    let chat_id = connect_chat_id(sender_id, receiver_id, pool).await?;
+    let saved_message = insert_message(
+        chat_id,
+        sender_id,
+        receiver_id,
+        message_content.clone(),
+        pool,
+    )
+    .await?;
+    update_chat_last_message(chat_id, message_content, sender_id, pool).await?;
+    Ok(saved_message)
 }
 
 pub async fn connect_chat_id(user1_id: Uuid, user2_id: Uuid, pool: &PgPool) -> Result<i32, Error> {
@@ -125,4 +132,44 @@ pub async fn connect_chat_id(user1_id: Uuid, user2_id: Uuid, pool: &PgPool) -> R
     }
     let chat_id = get_chat_id(user1_id, user2_id, &pool).await?;
     Ok(chat_id)
+}
+
+pub async fn get_all_chats(
+    user1_id: Uuid,
+    user2_id: Uuid,
+    pool: &PgPool,
+) -> Result<Vec<Message>, Error> {
+    let chat_id = get_chat_id(user1_id, user2_id, pool).await?;
+    let messages = sqlx::query_as!(
+        Message,
+        r#"
+        SELECT message_id, chat_id, sender_id, receiver_id,content, sent_at, seen
+        FROM Messages
+        WHERE chat_id = $1
+        ORDER BY sent_at ASC
+        "#,
+        chat_id
+    )
+    .fetch_all(pool)
+    .await?;
+    Ok(messages)
+}
+
+pub async fn mark_messages_as_seen_for_users(
+    receiver_id: Uuid,
+    sender_id: Uuid,
+    pool: &PgPool,
+) -> Result<(), Error> {
+    sqlx::query!(
+        r#"
+        UPDATE Messages
+        SET seen = true
+        WHERE receiver_id = $1 AND sender_id = $2
+        "#,
+        receiver_id,
+        sender_id
+    )
+    .execute(pool)
+    .await?;
+    Ok(())
 }

@@ -250,6 +250,7 @@ dependencies = [
  "dotenv",
  "http",
  "serde",
+ "serde_json",
  "socketioxide",
  "sqlx",
  "tokio",
