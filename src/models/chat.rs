@@ -9,7 +9,7 @@ pub struct Chat {
     pub last_message: Option<String>,
     pub last_message_sent_at: Option<chrono::NaiveDateTime>,
     pub last_message_sender_id: Option<Uuid>,
-    pub unseen_messages_count: i32,
+    pub unseen_messages_count: Option<i64>,
     pub created_at: chrono::NaiveDateTime,
     pub updated_at: chrono::NaiveDateTime,
 }
@@ -21,5 +21,5 @@ pub struct ConnectedChatUser {
     pub last_message: Option<String>,
     pub last_message_sent_at: Option<chrono::NaiveDateTime>,
     pub last_message_sender_id: Option<Uuid>,
-    pub unseen_messages_count: Option<i32>,
+    pub unseen_messages_count: Option<i64>,
 }

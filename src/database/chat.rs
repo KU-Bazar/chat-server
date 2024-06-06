@@ -52,7 +52,7 @@ pub async fn update_chat_last_message(
     sqlx::query!(
         r#"
         UPDATE Chats
-        SET last_message = $1, last_message_sent_at = $2, last_message_sender_id = $3
+        SET last_message = $1, last_message_sent_at = $2, last_message_sender_id = $3 
         WHERE chat_id = $4
         "#,
         content,
@@ -164,7 +164,7 @@ pub async fn mark_messages_as_seen_for_users(
         r#"
         UPDATE Messages
         SET seen = true
-        WHERE receiver_id = $1 AND sender_id = $2
+        WHERE receiver_id = $2 AND sender_id = $1
         "#,
         receiver_id,
         sender_id
@@ -188,14 +188,18 @@ pub async fn get_all_conversations(
             c.last_message,
             c.last_message_sent_at,
             c.last_message_sender_id,
-            c.unseen_messages_count
+            COUNT(m.seen) FILTER (WHERE m.seen = false AND m.receiver_id = $1) AS unseen_messages_count
         FROM
             Chats c
         JOIN
             chat_user u ON (u.id = c.user1_id OR u.id = c.user2_id)
+        LEFT JOIN
+            Messages m ON c.chat_id = m.chat_id
         WHERE
             (c.user1_id = $1 OR c.user2_id = $1)
             AND u.id != $1
+        GROUP BY
+            u.id, u.fullname, u.avatar_url, c.last_message, c.last_message_sent_at, c.last_message_sender_id
         ORDER BY
             c.last_message_sent_at ASC
     "#,

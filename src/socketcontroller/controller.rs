@@ -1,6 +1,7 @@
 use axum::response::Result;
 use socketioxide::extract::{Data, SocketRef, State};
 use sqlx::{Error, PgPool};
+use uuid::Uuid;
 
 use crate::{
     database::chat::{
@@ -19,12 +20,11 @@ pub async fn on_connect_handler(socket: SocketRef) {
             });
         },
     );
-
     socket.on(
         "message",
         move |s: SocketRef, Data::<SocketMessage>(message), pool: State<PgPool>| {
             tokio::task::spawn(async move {
-                handle_message(s, message, pool).await;
+                handle_message(s, message.clone(), pool).await;
             });
         },
     );
@@ -51,7 +51,12 @@ async fn handle_chat_join(
                 return eprintln!("Failed to join chat room: {}", err);
             }
             // and then the users gets the chat history
-            handle_messages_seen(chat_connection.clone(), &pool).await;
+            handle_messages_seen(
+                chat_connection.sender_id,
+                chat_connection.receiver_id,
+                &pool,
+            )
+            .await;
             handle_messages_history(socket, chat_connection, &pool).await;
         }
         Err(_) => {
@@ -62,10 +67,7 @@ async fn handle_chat_join(
     }
 }
 
-async fn handle_messages_seen(chat_connection: SocketOnChatConnection, pool: &PgPool) {
-    let sender_id = chat_connection.sender_id; // sender on on end is actually reciver of the
-                                               // message send by other
-    let receiver_id = chat_connection.receiver_id;
+async fn handle_messages_seen(sender_id: Uuid, receiver_id: Uuid, pool: &PgPool) {
     match mark_messages_as_seen_for_users(receiver_id, sender_id, pool).await {
         Ok(_) => {
             println!("Messages seen by {:?} of {:?}", sender_id, receiver_id);
@@ -115,6 +117,7 @@ async fn handle_message(socket: SocketRef, message: SocketMessage, pool: State<P
     match connect_chat_id(message.sender_id, message.receiver_id, &pool).await {
         Ok(id) => {
             message_emitter(chat_status, id, socket).await;
+            handle_messages_seen(message.sender_id, message.receiver_id, &pool).await;
         }
         Err(_) => {
             if let Err(err) = socket.emit("message-out", "this ain't good!") {
