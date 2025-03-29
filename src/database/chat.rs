@@ -146,7 +146,7 @@ pub async fn get_all_chats(
         SELECT message_id, chat_id, sender_id, receiver_id,content, sent_at, seen
         FROM Messages
         WHERE chat_id = $1
-        ORDER BY sent_at ASC
+        ORDER BY sent_at DESC 
         "#,
         chat_id
     )

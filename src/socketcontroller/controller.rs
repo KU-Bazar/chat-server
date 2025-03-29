@@ -11,6 +11,8 @@ use crate::{
 };
 
 pub async fn on_connect_handler(socket: SocketRef) {
+    // println!("user connected: {:?}", socket.id);
+
     //generates chat id if not availabel and returns the chatid
     socket.on(
         "join_chat",
@@ -35,6 +37,10 @@ async fn handle_chat_join(
     chat_connection: SocketOnChatConnection,
     pool: State<PgPool>,
 ) {
+    println!(
+        "user1 :{:?} user2: {:?} connected",
+        chat_connection.sender_id, chat_connection.receiver_id
+    );
     // at first the user gest connected to the chat room
     match connect_chat_id(
         chat_connection.sender_id,
